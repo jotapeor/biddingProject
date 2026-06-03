@@ -26,11 +26,11 @@ public class TokenService {
     }
 
     public String gerarToken(UserDTO user) {
-        if ((user.getId() == 0 || user.getId() == null) ||
-                user.getNome().isEmpty() ||
-                user.getEmail().isEmpty() ||
-                user.getSenha().isEmpty()) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Um ou mais campos faltantes");
+        if (user.getId() == null || user.getId() == 0 ||
+                user.getNome() == null || user.getNome().isEmpty() ||
+                user.getEmail() == null || user.getEmail().isEmpty() ||
+                user.getSenha() == null || user.getSenha().isEmpty()) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Credenciais inválidas ou utilizador não encontrado.");
         }
         return Jwts.builder()
                 .subject(user.getNome())
@@ -59,16 +59,12 @@ public class TokenService {
 
     public boolean validarToken(String token) {
         try {
-            // Cria um parser JWT com a chave secreta para validação
             Jwts.parser()
                     .setSigningKey(getSignKey())
                     .build()
-                    // Analisa e valida o token (lança exceção se inválido ou expirado)
                     .parseClaimsJws(token);
-            // Se chegou aqui, o token é válido
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // Se qualquer exceção ocorrer, o token é inválido ou expirou
             return false;
         }
     }
