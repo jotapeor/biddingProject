@@ -28,11 +28,9 @@ public class UserService {
         } else if (user.getRole().isEmpty()) {
             user.setRole("FORNECEDOR");
         }
-
         if (!message.isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), message);
         }
-
         repository.register(user);
     }
 
@@ -49,6 +47,9 @@ public class UserService {
         }
 
         UserDTO loggedData = repository.login(user.getEmail(), user.getSenha());
+        if (loggedData == null || loggedData.getId() == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "E-mail ou palavra-passe incorretos.");
+        }
         return tokenService.gerarToken(loggedData);
     }
 }
