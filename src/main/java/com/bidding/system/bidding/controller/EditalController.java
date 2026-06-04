@@ -41,10 +41,25 @@ public class EditalController {
         return editalService.listaEdital(token, urgente);
     }
 
+    @GetMapping("/{id}")
+    public EditalDTO buscarEdital(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        return editalService.buscarEdital(id, token);
+    }
+
     @PostMapping("/{id}/lances")
     public String novoLance(@PathVariable Long id, @RequestHeader("Authorization") String authHeader, @RequestBody LanceDTO lance) {
         String token = authHeader.replace("Bearer ", "");
         lanceService.novoLance(id, lance, token);
         return "Lance feito com sucesso!";
+    }
+
+    @GetMapping("/{id}/lances")
+    public List<LanceDTO> listarLances(@PathVariable Long id, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        return lanceService.listarLances(id, token);
     }
 }

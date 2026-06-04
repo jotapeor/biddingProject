@@ -31,6 +31,9 @@ public class UserService {
         if (!message.isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), message);
         }
+        if (repository.emailExiste(user.getEmail())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(409), "E-mail já cadastrado");
+        }
         repository.register(user);
     }
 
@@ -48,8 +51,16 @@ public class UserService {
 
         UserDTO loggedData = repository.login(user.getEmail(), user.getSenha());
         if (loggedData == null || loggedData.getId() == null) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "E-mail ou palavra-passe incorretos.");
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "E-mail ou senha incorretos.");
         }
         return tokenService.gerarToken(loggedData);
+    }
+
+    public boolean verificarEmail(String email) {
+        return repository.emailExiste(email);
+    }
+
+    public boolean verificarNome(String nome) {
+        return repository.nomeExiste(nome);
     }
 }

@@ -52,13 +52,17 @@ public class EditalRepository {
     }
 
     public EditalDTO getById(Long id) {
-        EditalDTO edital = new EditalDTO();
+        EditalDTO edital = null;
         try {
             Connection conn = Conexao.conectar();
-            PreparedStatement stmt = conn.prepareStatement("select data_fechamento, status from editais where id = ?");
+            PreparedStatement stmt = conn.prepareStatement("select * from editais where id = ?");
             stmt.setLong(1, id);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
+                edital = new EditalDTO();
+                edital.setId(rs.getLong("id"));
+                edital.setTitulo(rs.getString("titulo"));
+                edital.setDescricao(rs.getString("descricao"));
                 edital.setData_fechamento(
                         rs.getTimestamp("data_fechamento").toLocalDateTime()
                 );
