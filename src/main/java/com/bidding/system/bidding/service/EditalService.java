@@ -73,4 +73,16 @@ public class EditalService {
                 })
                 .collect(Collectors.toList());
     }
+
+    public EditalDTO buscarEdital(Long id, String authHeader) {
+        if (!tokenService.validarToken(authHeader)) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
+        }
+
+        EditalDTO edital = editalRepository.getById(id);
+        if (edital == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado");
+        }
+        return edital;
+    }
 }
