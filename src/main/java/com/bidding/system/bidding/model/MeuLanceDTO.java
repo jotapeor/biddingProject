@@ -4,16 +4,20 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
+// DTO enriquecido para o painel "Meus Lances" do FORNECEDOR:
+// agrega dados do lance e do edital correspondente em um único objeto, evitando múltiplas consultas ao banco
 public class MeuLanceDTO {
-    private Long idLance;
-    private double valor;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime dataLance;
-    private Long idEdital;
-    private String tituloEdital;
-    private String statusEdital;
-    private boolean vencedor;
 
+    private Long idLance;        // identificador do lance
+    private double valor;        // valor ofertado pelo fornecedor
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // formato ISO 8601 sem timezone para serialização/desserialização da data
+    private LocalDateTime dataLance;    // data e hora em que o lance foi registrado
+    private Long idEdital;       // identificador do edital ao qual o lance pertence (vem do JOIN no repositório)
+    private String tituloEdital; // título do edital (vem do JOIN com a tabela editais no repositório)
+    private String statusEdital; // status atual do edital: "ABERTO" ou "FECHADO" (vem do JOIN)
+    private boolean vencedor;    // calculado em memória pelo LanceService: true se este lance tem o menor valor no edital FECHADO
+
+    // Construtor padrão exigido pelo Jackson para desserializar o JSON do corpo da requisição
     public MeuLanceDTO() {
     }
 
