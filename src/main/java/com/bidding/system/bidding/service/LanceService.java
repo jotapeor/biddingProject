@@ -40,11 +40,11 @@ public class LanceService {
                         "Edital fechado para lances!"
                 );
             }
-            
+
             lance.setData_lance(LocalDateTime.now());
             lance.setId_edital(id);
             lance.setId_usuario(userLogado.getId());
-            
+
             int rows = lanceRepository.novoLance(lance);
             if (rows == 0) {
                 throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao criar lance!");
