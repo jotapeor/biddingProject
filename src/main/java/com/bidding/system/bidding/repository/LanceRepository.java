@@ -78,10 +78,10 @@ public class LanceRepository {
         try {
             Connection conn = Conexao.conectar();
             String sql = "SELECT l.id as id_lance, l.valor, l.data_lance, e.id as id_edital, e.titulo, e.status " +
-                         "FROM lances l " +
-                         "JOIN editais e ON l.id_edital = e.id " +
-                         "WHERE l.id_usuario = ? " +
-                         "ORDER BY l.data_lance DESC";
+                    "FROM lances l " +
+                    "JOIN editais e ON l.id_edital = e.id " +
+                    "WHERE l.id_usuario = ? " +
+                    "ORDER BY l.data_lance DESC";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, idUsuario);
             java.sql.ResultSet rs = stmt.executeQuery();
