@@ -10,16 +10,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/lances")
+@RestController                    // combina @Controller + @ResponseBody: todos os retornos são serializados como JSON no corpo da resposta
+@RequestMapping("/api/lances")     // prefixo base das rotas deste controller; separado de EditalController pois trata da visão pessoal do FORNECEDOR
 public class LanceController {
 
-    @Autowired
+    @Autowired                     // injeta o bean LanceService gerenciado pelo Spring
     private LanceService lanceService;
 
-    @GetMapping("/meus-lances")
-    public List<MeuLanceDTO> getMeusLances(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        return lanceService.getMeusLances(token);
+    @GetMapping("/meus-lances")    // mapeia GET /api/lances/meus-lances
+    public List<MeuLanceDTO> getMeusLances(@RequestHeader("Authorization") String authHeader) { // @RequestHeader extrai o token JWT do header Authorization
+        String token = authHeader.replace("Bearer ", ""); // remove o prefixo "Bearer " para obter o token puro
+        return lanceService.getMeusLances(token); // valida o token, verifica se é FORNECEDOR e retorna os lances com o campo "vencedor" calculado
     }
 }

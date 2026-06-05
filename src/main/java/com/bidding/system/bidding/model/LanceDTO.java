@@ -4,18 +4,21 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
+// DTO de lance: na entrada o front-end envia só o "valor"; os demais campos são preenchidos pelo LanceService
 public class LanceDTO {
 
-    private Long id;
-    private double valor;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime data_lance;
-    private Long id_edital;
-    private Long id_usuario;
+    private Long id;           // identificador único gerado pelo banco (auto_increment)
+    private double valor;      // valor monetário ofertado no lance, informado pelo fornecedor
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // formato ISO 8601 sem timezone para serialização/desserialização da data
+    private LocalDateTime data_lance;  // momento exato do lance, preenchido pelo servidor com LocalDateTime.now()
+    private Long id_edital;    // referência ao edital ao qual o lance pertence, preenchida pelo LanceService
+    private Long id_usuario;   // referência ao fornecedor que enviou o lance, extraída do JWT pelo LanceService
 
+    // Construtor padrão exigido pelo Jackson para desserializar o JSON do corpo da requisição
     public LanceDTO() {
     }
 
+    // Construtor completo utilizado ao montar o objeto após leitura do banco de dados
     public LanceDTO(Long id, double valor, LocalDateTime data_lance, Long id_edital, Long id_usuario) {
         this.id = id;
         this.valor = valor;
