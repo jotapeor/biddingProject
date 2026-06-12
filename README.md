@@ -1,70 +1,89 @@
-# Bidding System Backend (Sistema de Licitações/Leilões)
+# 🏛️ EditaisGOV — Backend
 
-Este é o backend de um Sistema de Licitações (ou Leilões), desenvolvido em **Java 21** e **Spring Boot 4.0**. A API é responsável pelo gerenciamento de usuários, criação e administração de editais, além do processamento e histórico de lances em tempo real.
+> ⚙️ API REST do Sistema de Licitações Governamentais, desenvolvida com Java 21 e Spring Boot. Responsável pelo gerenciamento de usuários, editais e processamento de lances com autenticação via JWT.
 
-O projeto utiliza uma arquitetura baseada em camadas (Controllers, Services e Repositories) e conta com autenticação e autorização via JWT (JSON Web Tokens).
+Este repositório é o **núcleo do sistema**. Para a interface web que consome esta API, consulte o repositório do **[Frontend →](https://github.com/jotapeor/bidding-frontend)**.
+
+---
 
 ## 🚀 Tecnologias Utilizadas
 
-- **Linguagem:** Java 21
-- **Framework:** Spring Boot 4.0.6
-- **Banco de Dados:** MySQL
-- **Segurança/Autenticação:** JWT (jjwt)
-- **Views/Templates:** Thymeleaf
-- **Gerenciador de Dependências:** Maven
+| Tecnologia | Descrição |
+|---|---|
+| Java 21 | Linguagem principal |
+| Spring Boot 4.0.6 | Framework base |
+| MySQL | Banco de dados relacional |
+| JWT (jjwt) | Autenticação e autorização |
+| Thymeleaf | Renderização de views |
+| Maven | Gerenciador de dependências |
 
-## ✨ Principais Funcionalidades
+---
+
+## ✨ Funcionalidades
 
 - **Gerenciamento de Usuários:** Cadastro, autenticação e controle de perfis.
 - **Gestão de Editais:** Criação e listagem de editais/leilões disponíveis.
-- **Gerenciamento de Lances (Bids):** 
-  - Submissão de lances para um determinado edital.
-  - Listagem do histórico de lances (`MeuLanceDTO`).
-- **Autenticação Segura:** Proteção de endpoints utilizando tokens JWT.
+- **Gerenciamento de Lances (Bids):** Submissão e histórico de lances (`MeuLanceDTO`).
+- **Autenticação Segura:** Proteção de endpoints via tokens JWT.
+
+---
 
 ## 🛠️ Pré-requisitos
 
-Antes de rodar o projeto, certifique-se de ter instalado em sua máquina:
-- [Java Development Kit (JDK) 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-- [Maven](https://maven.apache.org/) (O projeto já inclui o `mvnw` caso prefira usar o wrapper)
+- [JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
+- [Maven](https://maven.apache.org/)
 - [MySQL Server](https://dev.mysql.com/downloads/mysql/)
 
-## ⚙️ Como executar o projeto localmente
+---
+
+## ⚙️ Como Executar Localmente
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/SEU-USUARIO/biddingBackEnd.git
+   git clone https://github.com/jotapeor/biddingBackEnd.git
    cd biddingBackEnd
    ```
 
-2. **Configuração do Banco de Dados:**
-   - Crie um banco de dados no seu MySQL para o projeto.
-   - O repositório inclui um arquivo chamado `dumpDB.sql` na raiz do projeto. Você pode importá-lo no seu banco para criar as tabelas e popular dados iniciais:
+2. **Configure o banco de dados:**
+   - Crie um banco no MySQL e importe o dump inicial:
      ```bash
      mysql -u seu_usuario -p nome_do_banco < dumpDB.sql
      ```
-   - Atualize as credenciais do banco de dados (URL, usuário e senha) no arquivo `src/main/resources/application.properties` (ou `application.yml`).
+   - Atualize as credenciais em `src/main/resources/application.properties`.
 
-3. **Iniciando a Aplicação:**
-   - Via Maven Wrapper (Windows):
-     ```cmd
-     mvnw spring-boot:run
-     ```
-   - Via Maven padrão:
-     ```bash
-     mvn spring-boot:run
-     ```
+3. **Inicie a aplicação:**
+   ```bash
+   # Com Maven Wrapper (Windows)
+   mvnw spring-boot:run
 
-A aplicação deverá iniciar e rodar localmente (por padrão em `http://localhost:8080`).
+   # Com Maven padrão
+   mvn spring-boot:run
+   ```
+
+A API estará disponível em `http://localhost:8080`.
+
+> ⚠️ O **[Frontend](https://github.com/jotapeor/bidding-frontend)** precisa que esta API esteja em execução para funcionar corretamente.
+
+---
 
 ## 📂 Estrutura de Pacotes
 
-A estrutura principal dos arquivos Java (em `src/main/java/com/bidding/system/bidding/`) segue o padrão:
-- `/controller` - Endpoints da API REST (ex: `UserController`, `EditalController`, `LanceController`).
-- `/model` - Entidades e DTOs (ex: `MeuLanceDTO`).
-- `/repository` - Interfaces de acesso ao banco de dados via Spring Data JPA.
-- `/service` - Regras de negócio da aplicação.
+```text
+src/main/java/com/bidding/system/bidding/
+├── controller/    # Endpoints da API REST (UserController, EditalController, LanceController)
+├── model/         # Entidades e DTOs (ex: MeuLanceDTO)
+├── repository/    # Acesso ao banco de dados via Spring Data JPA
+└── service/       # Regras de negócio
+```
+
+---
 
 ## 🤝 Contribuindo
 
-Sinta-se à vontade para realizar um *fork* do projeto e enviar *pull requests*. Para mudanças maiores, por favor abra uma *issue* primeiro para discutirmos o que você gostaria de alterar.
+Sinta-se à vontade para abrir uma *issue* antes de enviar um *pull request*, especialmente para mudanças maiores.
+
+---
+
+## 📝 Licença
+
+Este projeto tem fins educacionais como parte de um curso de Desenvolvimento Web com Java.
