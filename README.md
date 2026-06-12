@@ -1,6 +1,6 @@
 # Bidding System Backend (Sistema de Licitações/Leilões)
 
-Este é o backend de um Sistema de Licitações (ou Leilões), desenvolvido em **Java 21** e **Spring Boot 4.0**. A API é responsável pelo gerenciamento de usuários, criação e administração de editais, além do processamento e histórico de lances em tempo real.
+Este é o BackEnd de um Sistema de Licitações Governamentais, desenvolvido em **Java 21** e **Spring Boot 4.0**. A API é responsável pelo gerenciamento de usuários, criação e administração de editais, além do processamento e histórico de lances em tempo real.
 
 O projeto utiliza uma arquitetura baseada em camadas (Controllers, Services e Repositories) e conta com autenticação e autorização via JWT (JSON Web Tokens).
 
