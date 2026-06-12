@@ -2,7 +2,7 @@
 
 > ⚙️ API REST do Sistema de Licitações Governamentais, desenvolvida com Java 21 e Spring Boot. Responsável pelo gerenciamento de usuários, editais e processamento de lances com autenticação via JWT.
 
-Este repositório é o **núcleo do sistema**. Para a interface web que consome esta API, consulte o repositório do **[Frontend →](https://github.com/jotapeor/bidding-frontend)**.
+Este repositório é o **núcleo do sistema**. Para a interface web que consome esta API, consulte o repositório do **[Frontend →](https://github.com/jotapeor/biddingFrontEnd.git)**.
 
 ---
 
