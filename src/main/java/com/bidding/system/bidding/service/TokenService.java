@@ -14,62 +14,66 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-@Service // registra esta classe como bean de serviço no contexto do Spring; permite injeção via @Autowired
+@Service
 public class TokenService {
 
-    @Value("${api.security.token.secret}") // injeta o valor da propriedade "api.security.token.secret" do application.properties — mantém o segredo fora do código-fonte
+    /**
+     * Chave secreta em Base64 lida do {@code application.properties}.
+     * Injetada pelo Spring via {@code @Value}, o que evita hardcoding no código-fonte
+     * e permite configuração por ambiente (dev, staging, prod).
+     */
+    @Value("${api.security.token.secret}")
     private String secret;
 
-    // Decodifica a chave secreta de Base64 e cria um objeto SecretKey HMAC-SHA usado para assinar e verificar tokens
     private SecretKey getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(this.secret); // decodifica a string Base64 para bytes
-        return Keys.hmacShaKeyFor(keyBytes); // cria a chave criptográfica HMAC-SHA a partir dos bytes
+        byte[] keyBytes = Decoders.BASE64.decode(this.secret); // Decodifica a string Base64 para bytes brutos
+        return Keys.hmacShaKeyFor(keyBytes); // Cria a chave criptográfica HMAC-SHA a partir dos bytes
     }
 
-    // Gera e retorna um token JWT assinado com os dados do usuário autenticado
     public String gerarToken(UserDTO user) {
-        if (user.getId() == null || user.getId() == 0 ||
-                user.getNome() == null || user.getNome().isEmpty() ||
-                user.getEmail() == null || user.getEmail().isEmpty() ||
-                user.getSenha() == null || user.getSenha().isEmpty()) { // valida os campos antes de gerar: dados inválidos indicam que o login falhou
-            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Credenciais inválidas ou utilizador não encontrado.");
+        if (user.getId() == null || user.getId() == 0
+                || user.getNome() == null || user.getNome().isEmpty()
+                || user.getEmail() == null || user.getEmail().isEmpty()
+                || user.getSenha() == null || user.getSenha().isEmpty()) {
+            // Dados inválidos indicam que o login falhou; lançamos 400 em vez de gerar um token inválido
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400),
+                    "Credenciais inválidas ou utilizador não encontrado."
+            );
         }
         return Jwts.builder()
-                .subject(user.getNome())              // campo "sub" do JWT: identifica o sujeito do token (convenção JWT)
-                .claim("id", user.getId())            // adiciona o id do usuário ao payload — extraído pelo TokenService.extrairClaim()
-                .claim("nome", user.getNome())        // adiciona o nome ao payload — exibido na navbar do front-end
-                .claim("role", user.getRole())        // adiciona a role ao payload — usada nas validações de autorização dos Services
-                .issuedAt(new Date())                 // "iat": registra o momento em que o token foi emitido
-                .expiration(new Date(System.currentTimeMillis() + 3000000)) // "exp": token expira em 3.000.000 ms = 50 minutos
-                .signWith(getSignKey())               // assina o token com HMAC-SHA usando a chave secreta
-                .compact();                           // serializa o token para o formato compacto: header.payload.signature
+                .subject(user.getNome())              // "sub": sujeito do token (convenção JWT)
+                .claim("id", user.getId())            // Claim customizado: ID do usuário, extraído pelo TokenService.extrairClaim()
+                .claim("nome", user.getNome())        // Claim customizado: nome exibido na navbar do frontend
+                .claim("role", user.getRole())        // Claim customizado: role usada nas validações de autorização
+                .issuedAt(new Date())                 // "iat": momento de emissão do token
+                .expiration(new Date(System.currentTimeMillis() + 3_000_000)) // "exp": 3.000.000 ms = ~50 minutos
+                .signWith(getSignKey())               // Assina o token com HMAC-SHA usando a chave secreta
+                .compact();                           // Serializa para o formato compacto: header.payload.signature
     }
 
-    // Extrai os dados do usuário (id, nome, role) do payload do JWT sem consultar o banco
     public UserDTO extrairClaim(String token) {
         Claims claims = Jwts.parser()
-                .verifyWith(getSignKey())  // configura a chave para verificar a assinatura do token
+                .verifyWith(getSignKey())  // Configura a chave para verificar a assinatura antes de ler o payload
                 .build()
-                .parseSignedClaims(token) // analisa o token, verificando assinatura e expiração; lança JwtException se inválido
-                .getPayload();            // retorna o payload (claims) do token como objeto Claims
-
+                .parseSignedClaims(token) // Analisa e verifica o token; lança JwtException se inválido
+                .getPayload();            // Retorna o payload (claims) como objeto Claims
         UserDTO user = new UserDTO();
-        user.setId(claims.get("id", Long.class));       // lê o claim "id" do payload e converte para Long
-        user.setNome(claims.get("nome", String.class)); // lê o claim "nome" do payload
-        user.setRole(claims.get("role", String.class)); // lê o claim "role" do payload
-        return user; // retorna um UserDTO com os dados necessários para autorização, sem precisar de nova consulta ao banco
+        user.setId(claims.get("id", Long.class));       // Lê o claim "id" e converte para Long
+        user.setNome(claims.get("nome", String.class)); // Lê o claim "nome"
+        user.setRole(claims.get("role", String.class)); // Lê o claim "role" para autorização
+        return user;
     }
 
-    // Valida a assinatura e a expiração do token; retorna true se válido, false se adulterado, expirado ou malformado
     public boolean validarToken(String token) {
         try {
             Jwts.parser()
-                    .setSigningKey(getSignKey()) // configura a chave para verificação
+                    .setSigningKey(getSignKey()) // Configura a chave para verificação da assinatura
                     .build()
-                    .parseClaimsJws(token);      // tenta analisar o token; lança exceção se inválido ou expirado
-            return true; // se chegou até aqui sem exceção, o token é válido
+                    .parseClaimsJws(token);      // Lança JwtException se o token for inválido ou expirado
+            return true; // Se não lançou exceção, o token é válido
         } catch (JwtException | IllegalArgumentException e) {
-            return false; // captura qualquer problema com o token (adulterado, expirado, nulo) e retorna false sem lançar exceção ao chamador
+            // Captura token adulterado, expirado, nulo ou malformado — retorna false sem propagar exceção
+            return false;
         }
     }
 }

@@ -8,63 +8,85 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-@Service // registra esta classe como bean de serviço no contexto do Spring; permite injeção via @Autowired
+@Service
 public class UserService {
 
-    @Autowired                   // injeta o bean UserRepository gerenciado pelo Spring
+    @Autowired
     private UserRepository repository;
 
-    @Autowired                   // injeta o bean TokenService para gerar o JWT após login bem-sucedido
+    @Autowired
     private TokenService tokenService;
 
-    // Registra um novo usuário após validar campos obrigatórios e unicidade do e-mail
     public void register(UserDTO user) {
         String message = "";
-        if (user.getNome().isEmpty()) {
-            message = "Nome não preenchido";        // campo nome ausente
-        } else if (user.getEmail().isEmpty()) {
-            message = "E-mail não preenchido";      // campo e-mail ausente
-        } else if (user.getSenha().isEmpty()) {
-            message = "Senha não preenchida";       // campo senha ausente
-        } else if (user.getRole().isEmpty()) {
-            user.setRole("FORNECEDOR");             // role padrão: se não informada pelo front-end, assume-se FORNECEDOR
+        if (user.getNome() == null || user.getNome().trim().isEmpty()) {
+            message += "O nome não pode ser vazio. ";
+        } else if (user.getNome().trim().length() < 3) {
+            message += "Insira um nome válido (mínimo de 3 letras). ";
         }
-        if (!message.isEmpty()) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message); // lança 400 Bad Request com a mensagem de erro acumulada
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            message += "O e-mail não pode ser vazio. ";
+        } else if (!user.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            // Regex básico de e-mail: garante a presença de um caractere '@' seguido de domínio
+            message += "Insira um e-mail válido (ex: usuario@email.com). ";
+        }
+        if (user.getSenha() == null || user.getSenha().trim().isEmpty()) {
+            message += "A senha não pode ser vazia. ";
+        } else {
+            String s = user.getSenha();
+            if (s.length() < 8) {
+                message += "A senha deve ter pelo menos 8 caracteres. ";
+            } else if (!s.matches(".*[A-Z].*")) {
+                message += "A senha deve conter pelo menos uma letra maiúscula. ";
+            } else if (!s.matches(".*[0-9].*")) {
+                message += "A senha deve conter pelo menos um número. ";
+            } else if (!s.matches(".*[!@#$%^&*(),.?\":{}|<>\\-_+=\\[\\]].*")) {
+                message += "A senha deve conter pelo menos um caractere especial. ";
+            }
+        }
+        if (user.getConfirmarSenha() == null || user.getConfirmarSenha().trim().isEmpty()) {
+            message += "A confirmação de senha não pode ser vazia. ";
+        } else if (!user.getSenha().equals(user.getConfirmarSenha())) {
+            message += "As senhas não coincidem. ";
+        }
+        if (user.getRole() == null || user.getRole().isEmpty()) {
+            // Role padrão: o registro público é exclusivo para FORNECEDORs; COMPRADORs são cadastrados manualmente
+            user.setRole("FORNECEDOR");
+        }
+        if (!message.trim().isEmpty()) {
+            // Lança 400 Bad Request com todas as mensagens de erro acumuladas
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message.trim());
         }
         if (repository.emailExiste(user.getEmail())) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(409), "E-mail já cadastrado"); // lança 409 Conflict se o e-mail já estiver em uso
+            // Lança 409 Conflict especificamente para duplicidade de e-mail (semântica HTTP correta)
+            throw new ResponseStatusException(HttpStatusCode.valueOf(409), "E-mail já cadastrado");
         }
-        repository.register(user); // persiste o usuário no banco após todas as validações passarem
+        repository.register(user); // Persiste o usuário após todas as validações passarem
     }
 
-    // Autentica o usuário e retorna o token JWT; lança 400 se campos ausentes, 401 se credenciais incorretas
     public String logar(UserRequestDTO user) {
         String message = "";
         if (user.getEmail().isEmpty()) {
-            message = "E-mail não preenchido";  // campo e-mail ausente no formulário de login
+            message = "E-mail não preenchido";
         } else if (user.getSenha().isEmpty()) {
-            message = "Senha não preenchida";   // campo senha ausente no formulário de login
+            message = "Senha não preenchida";
         }
-
         if (!message.isEmpty()) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message); // lança 400 Bad Request com a mensagem de erro
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message);
         }
-
-        UserDTO loggedData = repository.login(user.getEmail(), user.getSenha()); // consulta o banco com email e senha; retorna UserDTO sem id se não encontrar
+        UserDTO loggedData = repository.login(user.getEmail(), user.getSenha());
         if (loggedData == null || loggedData.getId() == null) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "E-mail ou senha incorretos."); // lança 401 Unauthorized se as credenciais não baterem
+            // O repositório retorna objeto sem ID quando as credenciais não batem; lançamos 401
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "E-mail ou senha incorretos.");
         }
-        return tokenService.gerarToken(loggedData); // gera e retorna o token JWT assinado com id, nome e role do usuário
+        return tokenService.gerarToken(loggedData); // Gera e retorna o token JWT assinado
     }
 
-    // Delega a verificação de unicidade de e-mail ao repositório; usado pelo endpoint GET /api/autenticar/verificar-email
     public boolean verificarEmail(String email) {
-        return repository.emailExiste(email); // retorna true se o e-mail já estiver cadastrado
+        return repository.emailExiste(email);
     }
 
-    // Delega a verificação de unicidade de nome ao repositório; usado pelo endpoint GET /api/autenticar/verificar-nome
     public boolean verificarNome(String nome) {
-        return repository.nomeExiste(nome); // retorna true se o nome já estiver em uso
+        return repository.nomeExiste(nome);
     }
 }

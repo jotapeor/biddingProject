@@ -4,21 +4,27 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
-// DTO de edital: trafega entre front-end e back-end como JSON e mapeia linhas da tabela "editais"
 public class EditalDTO {
 
-    private Long id;                    // identificador único gerado pelo banco (auto_increment)
-    private String titulo;              // nome/título do edital
-    private String descricao;           // descrição detalhada do objeto licitado
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // define o formato ISO 8601 sem timezone para serialização/desserialização da data
-    private LocalDateTime data_fechamento; // prazo limite para recebimento de lances
-    private String status;              // estado do edital: "ABERTO" (aceita lances) ou "FECHADO"
+    private Long id;
+    private String titulo;
+    private String descricao;
+    /**
+     * Data e hora limite para recebimento de lances.
+     *
+     * <p>{@code @JsonFormat} define o padrão ISO 8601 sem timezone ({@code yyyy-MM-dd'T'HH:mm:ss})
+     * para serialização e desserialização, garantindo compatibilidade entre o JSON da API
+     * e o {@link LocalDateTime} do Java. O timezone é omitido intencionalmente porque a
+     * aplicação opera em um único fuso horário (servidor local).
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime data_fechamento;
+    private String status;
+    private Long vencedor;
 
-    // Construtor padrão exigido pelo Jackson para desserializar o JSON do corpo da requisição
     public EditalDTO() {
     }
 
-    // Construtor completo utilizado ao montar o objeto após leitura do banco de dados
     public EditalDTO(Long id, String titulo, String descricao, LocalDateTime data_fechamento, String status) {
         this.id = id;
         this.titulo = titulo;
@@ -65,5 +71,13 @@ public class EditalDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Long getVencedor() {
+        return vencedor;
+    }
+
+    public void setVencedor(Long vencedor) {
+        this.vencedor = vencedor;
     }
 }

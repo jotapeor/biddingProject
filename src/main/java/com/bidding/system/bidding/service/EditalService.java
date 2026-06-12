@@ -3,8 +3,10 @@ package com.bidding.system.bidding.service;
 import com.bidding.system.bidding.model.EditalDTO;
 import com.bidding.system.bidding.model.UserDTO;
 import com.bidding.system.bidding.repository.EditalRepository;
+import com.bidding.system.bidding.repository.LanceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -12,79 +14,115 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service // registra esta classe como bean de serviço no contexto do Spring; permite injeção via @Autowired
+@Service
 public class EditalService {
 
-    @Autowired                   // injeta o bean EditalRepository gerenciado pelo Spring
+    @Autowired
     private EditalRepository editalRepository;
 
-    @Autowired                   // injeta o bean TokenService para validar tokens nas operações de listagem e busca
+    @Autowired
+    private LanceRepository lanceRepository;
+
+    @Autowired
     private TokenService tokenService;
 
-    // Cria um novo edital após validar permissão (role COMPRADOR) e campos obrigatórios
     public void novoEdital(EditalDTO edital, UserDTO usuarioLogado) {
         String message = "";
         if (!usuarioLogado.getRole().equals("COMPRADOR")) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(403), // lança 403 Forbidden se o usuário não for COMPRADOR
+            // Lança 403 Forbidden imediatamente se a role não for COMPRADOR, sem processar mais nada
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403),
                     "Acesso negado: apenas usuários com role COMPRADOR podem criar editais"
             );
         }
-        if (edital.getTitulo().isEmpty()) {
-            message += "Título não preenchido!";     // acumula erro se o título estiver vazio
+        if (edital.getTitulo() == null || edital.getTitulo().trim().isEmpty()) {
+            message += "O título não pode ser vazio. ";
+        } else if (edital.getTitulo().trim().length() < 5) {
+            message += "O título deve ter no mínimo 5 caracteres. ";
+        } else if (edital.getTitulo().trim().length() > 150) {
+            message += "O título deve ter no máximo 150 caracteres. ";
         }
-        if (edital.getDescricao().isEmpty()) {
-            message += "Descrição não preenchida!";  // acumula erro se a descrição estiver vazia
+        if (edital.getDescricao() == null || edital.getDescricao().trim().isEmpty()) {
+            message += "A descrição não pode ser vazia. ";
+        } else if (edital.getDescricao().trim().length() > 1000) {
+            message += "A descrição deve ter no máximo 1000 caracteres. ";
         }
         if (edital.getData_fechamento() == null) {
-            message += "Data não preenchida!";       // acumula erro se a data de fechamento não foi informada
+            message += "Informe a data e hora de fechamento. ";
+        } else if (edital.getData_fechamento().isBefore(LocalDateTime.now()) || edital.getData_fechamento().isEqual(LocalDateTime.now())) {
+            message += "A data de fechamento deve ser no futuro. ";
         }
-        if (!message.isEmpty()) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message); // lança 400 Bad Request com todas as mensagens de erro acumuladas
+        if (!message.trim().isEmpty()) {
+            // Lança 400 com todas as mensagens de erro acumuladas de uma vez
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), message.trim());
         }
-        edital.setStatus("ABERTO"); // o status é sempre "ABERTO" na criação — não é definido pelo cliente
-        int rows = editalRepository.novoEdital(edital); // persiste o edital no banco e armazena o número de linhas afetadas
+        // O status inicial é sempre "ABERTO" — não pode ser definido pelo cliente na requisição
+        edital.setStatus("ABERTO");
+        int rows = editalRepository.novoEdital(edital);
         if (rows == 0) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(500), // lança 500 se o INSERT não afetou nenhuma linha
-                    "Erro ao criar edital");
+            // Lança 500 se o repositório retornar 0 (INSERT não afetou nenhuma linha)
+            throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao criar edital");
         }
     }
 
-    // Retorna a lista de editais, com filtragem opcional por urgência (editais ABERTOS com prazo nas próximas 48h)
     public List<EditalDTO> listaEdital(String authHeader, boolean urgente) {
         if (!tokenService.validarToken(authHeader)) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!"); // lança 401 se o token for inválido ou expirado
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
         }
-
-        List<EditalDTO> editais = editalRepository.listaEdital(); // busca todos os editais do banco
-
+        List<EditalDTO> editais = editalRepository.listaEdital();
         if (!urgente) {
-            return editais; // se não foi pedido filtro de urgência, retorna todos sem processamento adicional
+            return editais; // Sem filtro de urgência, retorna todos os editais diretamente
         }
-
-        LocalDateTime agora = LocalDateTime.now();          // captura o momento atual para comparação
-        LocalDateTime limite = agora.plusHours(48);         // define o limite de 48 horas a partir de agora para considerar "urgente"
-
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime limite = agora.plusHours(48); // Define a janela de 48 horas para "urgente"
         return editais.stream()
-                .filter(edital -> "ABERTO".equalsIgnoreCase(edital.getStatus()))   // descarta editais FECHADOS
-                .filter(edital -> edital.getData_fechamento() != null)             // descarta editais sem data de fechamento definida
+                .filter(edital -> edital.getStatus() != null && edital.getStatus().startsWith("ABERTO"))
+                .filter(edital -> edital.getData_fechamento() != null)
                 .filter(edital -> {
                     LocalDateTime fechamento = edital.getData_fechamento();
-                    return fechamento.isAfter(agora)    // isAfter(agora): descarta editais cujo prazo já passou
-                            && fechamento.isBefore(limite); // isBefore(limite): mantém apenas os que fecham dentro das próximas 48h
+                    // isAfter(agora): exclui editais já encerrados; isBefore(limite): inclui apenas os que fecham em até 48h
+                    return fechamento.isAfter(agora) && fechamento.isBefore(limite);
                 })
-                .collect(Collectors.toList()); // coleta os editais filtrados em uma nova lista e retorna
+                .collect(Collectors.toList());
     }
 
-    // Busca um edital pelo id; valida o token (401) e lança 404 se o edital não existir
     public EditalDTO buscarEdital(Long id, String authHeader) {
         if (!tokenService.validarToken(authHeader)) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!"); // lança 401 se o token for inválido ou expirado
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
         }
-
-        EditalDTO edital = editalRepository.getById(id); // consulta o banco; retorna null se o id não existir
+        EditalDTO edital = editalRepository.getById(id);
         if (edital == null) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado"); // lança 404 Not Found quando o repositório retorna null
+            // O repositório retorna null quando o ID não existe; convertemos para 404 aqui
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado");
+        }
+        if (edital.getStatus() != null && edital.getStatus().startsWith("ABERTO")) {
+            // Normaliza o status para "ABERTO" mesmo que contenha a mensagem de adiamento completa
+            edital.setStatus("ABERTO");
         }
         return edital;
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    public void verificarEFecharEditaisExpirados() {
+        List<EditalDTO> expirados = editalRepository.getEditaisAbertosExpirados();
+        for (EditalDTO edital : expirados) {
+            Long id = edital.getId();
+            int totalLances = editalRepository.contarLancesByEdital(id);
+            if (totalLances == 0) {
+                // Regra 1: sem participantes → prorroga 3 dias para não encerrar um edital vazio
+                editalRepository.prorrogarEdital(id);
+                continue; // Passa para o próximo edital sem executar as regras de encerramento
+            }
+            // Regra 2: com lances → encerra o edital e persiste o vencedor
+            editalRepository.atualizarStatusEdital(id, "ENCERRADO");
+            Long idLanceVencedor = lanceRepository.getIdLanceVencedor(id);
+            if (idLanceVencedor != null) {
+                lanceRepository.resetarVencedores(id);      // Garante que nenhum lance fique marcado erroneamente
+                lanceRepository.marcarVencedor(idLanceVencedor); // Persiste o vencedor na tabela de lances
+                Long idFornecedor = lanceRepository.getIdFornecedorDoLance(idLanceVencedor);
+                if (idFornecedor != null) {
+                    editalRepository.atualizarVencedorEdital(id, idFornecedor); // Persiste o vencedor na tabela de editais
+                }
+            }
+        }
     }
 }

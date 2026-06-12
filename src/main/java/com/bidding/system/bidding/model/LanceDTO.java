@@ -4,27 +4,34 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
-// DTO de lance: na entrada o front-end envia só o "valor"; os demais campos são preenchidos pelo LanceService
 public class LanceDTO {
 
-    private Long id;           // identificador único gerado pelo banco (auto_increment)
-    private double valor;      // valor monetário ofertado no lance, informado pelo fornecedor
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // formato ISO 8601 sem timezone para serialização/desserialização da data
-    private LocalDateTime data_lance;  // momento exato do lance, preenchido pelo servidor com LocalDateTime.now()
-    private Long id_edital;    // referência ao edital ao qual o lance pertence, preenchida pelo LanceService
-    private Long id_usuario;   // referência ao fornecedor que enviou o lance, extraída do JWT pelo LanceService
+    private Long id;
+    private Double valor;
+    /**
+     * Momento exato em que o lance foi registrado.
+     *
+     * <p>Preenchido pelo servidor com {@link LocalDateTime#now()} para evitar adulteração pelo cliente.
+     * {@code @JsonFormat} garante serialização no padrão ISO 8601 sem timezone.
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime data_lance;
+    private Long id_edital;
+    private Long id_usuario;
+    private String nome_fornecedor;
+    private boolean vencedor;
 
-    // Construtor padrão exigido pelo Jackson para desserializar o JSON do corpo da requisição
     public LanceDTO() {
     }
 
-    // Construtor completo utilizado ao montar o objeto após leitura do banco de dados
-    public LanceDTO(Long id, double valor, LocalDateTime data_lance, Long id_edital, Long id_usuario) {
+    public LanceDTO(Long id, Double valor, LocalDateTime data_lance, Long id_edital, Long id_usuario, String nome_fornecedor, boolean vencedor) {
         this.id = id;
         this.valor = valor;
         this.data_lance = data_lance;
         this.id_edital = id_edital;
         this.id_usuario = id_usuario;
+        this.nome_fornecedor = nome_fornecedor;
+        this.vencedor = vencedor;
     }
 
     public Long getId() {
@@ -35,11 +42,11 @@ public class LanceDTO {
         this.id = id;
     }
 
-    public double getValor() {
+    public Double getValor() {
         return valor;
     }
 
-    public void setValor(double valor) {
+    public void setValor(Double valor) {
         this.valor = valor;
     }
 
@@ -65,5 +72,21 @@ public class LanceDTO {
 
     public void setId_usuario(Long id_usuario) {
         this.id_usuario = id_usuario;
+    }
+
+    public String getNome_fornecedor() {
+        return nome_fornecedor;
+    }
+
+    public void setNome_fornecedor(String nome_fornecedor) {
+        this.nome_fornecedor = nome_fornecedor;
+    }
+
+    public boolean isVencedor() {
+        return vencedor;
+    }
+
+    public void setVencedor(boolean vencedor) {
+        this.vencedor = vencedor;
     }
 }

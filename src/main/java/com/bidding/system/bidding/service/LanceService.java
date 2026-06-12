@@ -2,6 +2,7 @@ package com.bidding.system.bidding.service;
 
 import com.bidding.system.bidding.model.EditalDTO;
 import com.bidding.system.bidding.model.LanceDTO;
+import com.bidding.system.bidding.model.MeuLanceDTO;
 import com.bidding.system.bidding.model.UserDTO;
 import com.bidding.system.bidding.repository.EditalRepository;
 import com.bidding.system.bidding.repository.LanceRepository;
@@ -11,102 +12,94 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
-@Service // registra esta classe como bean de serviço no contexto do Spring; permite injeção via @Autowired
+@Service
 public class LanceService {
 
-    @Autowired                     // injeta o bean TokenService para validar e extrair dados do JWT
+    @Autowired
     private TokenService tokenService;
 
-    @Autowired                     // injeta o bean EditalRepository para verificar o status e a data do edital
+    @Autowired
     private EditalRepository editalRepository;
 
-    @Autowired                     // injeta o bean LanceRepository para persistir e consultar lances
+    @Autowired
     private LanceRepository lanceRepository;
 
-    // Submete um novo lance a um edital após validar token, role, status do edital e prazo de fechamento
     public void novoLance(Long id, LanceDTO lance, String token) {
-        if (tokenService.validarToken(token)) { // verifica se o token é válido antes de qualquer operação
-            UserDTO userLogado = tokenService.extrairClaim(token);      // extrai id, nome e role do payload JWT sem consultar o banco
-            EditalDTO edital = editalRepository.getById(id);            // busca o edital no banco para validar status e data
-            if (!userLogado.getRole().equals("FORNECEDOR")) {
-                throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Necessário ser fornecedor para criar novo lance!"); // lança 403 se o usuário não for FORNECEDOR
-            }
-            if (!edital.getStatus().equals("ABERTO")) {
-                throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Edital fechado para lances!"); // lança 400 se o status no banco já for FECHADO
-            }
-            if (LocalDateTime.now().isAfter(edital.getData_fechamento())) {
-                throw new ResponseStatusException(           // lança 400 se o prazo de fechamento já passou, mesmo com status ainda "ABERTO" no banco
-                        HttpStatusCode.valueOf(400),
-                        "Edital fechado para lances!"
-                );
-            }
-
-            lance.setData_lance(LocalDateTime.now());       // preenche a data do lance com o momento atual do servidor (não vem do front-end)
-            lance.setId_edital(id);                         // preenche o id do edital a partir da URL (path variable)
-            lance.setId_usuario(userLogado.getId());        // preenche o id do fornecedor extraído do JWT
-
-            int rows = lanceRepository.novoLance(lance);   // persiste o lance no banco e armazena o número de linhas afetadas
-            if (rows == 0) {
-                throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao criar lance!"); // lança 500 se o INSERT não afetou nenhuma linha
-            }
-        } else {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!"); // lança 401 se o token for inválido ou expirado
+        if (!tokenService.validarToken(token)) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
+        }
+        // Extrai id, nome e role do payload JWT sem consultar o banco de dados
+        UserDTO userLogado = tokenService.extrairClaim(token);
+        EditalDTO edital = editalRepository.getById(id);
+        if (!userLogado.getRole().equals("FORNECEDOR")) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403),
+                    "Necessário ser fornecedor para criar novo lance!"
+            );
+        }
+        // Permite lances apenas em editais ABERTOS (o status pode ser "ABERTO (ADIADO...)")
+        if (edital.getStatus() == null || !edital.getStatus().startsWith("ABERTO")) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Edital fechado para lances!");
+        }
+        // Dupla verificação de prazo: o status pode ainda ser ABERTO mas a data ter passado (race condition com o job)
+        if (LocalDateTime.now().isAfter(edital.getData_fechamento())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Edital fechado para lances!");
+        }
+        if (lance.getValor() <= 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400),
+                    "O valor do lance deve ser maior que zero!"
+            );
+        }
+        int lancesDoFornecedor = lanceRepository.contarLancesPorFornecedor(id, userLogado.getId());
+        if (lancesDoFornecedor > 0) {
+            // Regra de negócio: um fornecedor só pode enviar um lance por edital
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Apenas um lance por fornecedor!");
+        }
+        lance.setData_lance(LocalDateTime.now());   // Data definida pelo servidor para evitar adulteração
+        lance.setId_edital(id);                     // ID do edital extraído da URL, não do corpo da requisição
+        lance.setId_usuario(userLogado.getId());    // ID do fornecedor extraído do JWT
+        int rows = lanceRepository.novoLance(lance);
+        if (rows == 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao criar lance!");
         }
     }
 
-    // Lista os lances de um edital aplicando regras de visibilidade: FECHADO = todos veem tudo; ABERTO = FORNECEDOR só vê os próprios
-    public java.util.List<LanceDTO> listarLances(Long idEdital, String token) {
+    public List<LanceDTO> listarLances(Long idEdital, String token) {
         if (!tokenService.validarToken(token)) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!"); // lança 401 se o token for inválido ou expirado
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
         }
-
-        UserDTO userLogado = tokenService.extrairClaim(token);    // extrai role e id do payload JWT para aplicar as regras de visibilidade
-        EditalDTO edital = editalRepository.getById(idEdital);    // busca o edital para verificar status e data de fechamento
+        UserDTO userLogado = tokenService.extrairClaim(token);
+        EditalDTO edital = editalRepository.getById(idEdital);
         if (edital == null) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado!"); // lança 404 se o edital não existir
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado!");
         }
-
-        boolean isFechado = !"ABERTO".equals(edital.getStatus()) || LocalDateTime.now().isAfter(edital.getData_fechamento()); // considera fechado se status != "ABERTO" OU se o prazo já passou
-
+        // Considera encerrado se o status for ENCERRADO OU se o prazo já passou (mesmo que o job ainda não atualizou)
+        boolean isFechado = "ENCERRADO".equals(edital.getStatus())
+                || LocalDateTime.now().isAfter(edital.getData_fechamento());
         if (isFechado) {
-            return lanceRepository.getLancesByEdital(idEdital); // edital fechado: todos os lances são visíveis para qualquer role (transparência pós-pregão)
-        } else {
-            if ("FORNECEDOR".equals(userLogado.getRole())) {
-                return lanceRepository.getLancesByEditalAndUsuario(idEdital, userLogado.getId()); // edital aberto + FORNECEDOR: retorna apenas os próprios lances (sem vantagem competitiva)
-            } else {
-                return lanceRepository.getLancesByEdital(idEdital); // edital aberto + COMPRADOR: retorna todos os lances (o comprador monitora a disputa)
-            }
+            // Edital encerrado: todos os lances são visíveis; o campo vencedor já vem do banco
+            return lanceRepository.getLancesByEdital(idEdital);
         }
+        if ("FORNECEDOR".equals(userLogado.getRole())) {
+            // Edital aberto + FORNECEDOR: retorna apenas os próprios lances para preservar sigilo competitivo
+            return lanceRepository.getLancesByEditalAndUsuario(idEdital, userLogado.getId());
+        }
+        // Edital aberto + COMPRADOR: retorna todos os lances
+        return lanceRepository.getLancesByEdital(idEdital);
     }
 
-    // Retorna todos os lances do fornecedor logado com o campo "vencedor" calculado para editais FECHADOS
-    public java.util.List<com.bidding.system.bidding.model.MeuLanceDTO> getMeusLances(String token) {
+    public List<MeuLanceDTO> getMeusLances(String token) {
         if (!tokenService.validarToken(token)) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!"); // lança 401 se o token for inválido ou expirado
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
         }
-
-        UserDTO userLogado = tokenService.extrairClaim(token); // extrai role e id do payload JWT
+        UserDTO userLogado = tokenService.extrairClaim(token);
         if (!"FORNECEDOR".equals(userLogado.getRole())) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Apenas fornecedores podem visualizar seus lances."); // lança 403 se o usuário não for FORNECEDOR
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403),
+                    "Apenas fornecedores podem visualizar seus lances."
+            );
         }
-
-        java.util.List<com.bidding.system.bidding.model.MeuLanceDTO> meusLances = lanceRepository.getMeusLances(userLogado.getId()); // busca todos os lances do fornecedor com JOIN nos dados do edital
-
-        for (com.bidding.system.bidding.model.MeuLanceDTO lance : meusLances) { // itera cada lance para calcular o campo "vencedor" em memória
-            boolean isFechado = !"ABERTO".equals(lance.getStatusEdital()); // verifica pelo status do edital retornado pelo JOIN no repositório
-            if (isFechado) {
-                Double menorValor = lanceRepository.getMenorLanceByEdital(lance.getIdEdital()); // busca o menor valor de lance do edital para determinar o vencedor
-                if (menorValor != null && lance.getValor() == menorValor) {
-                    lance.setVencedor(true);  // marca como vencedor se o valor deste lance for igual ao menor valor do edital
-                } else {
-                    lance.setVencedor(false); // não é o menor valor: não é vencedor
-                }
-            } else {
-                lance.setVencedor(false); // edital ainda ABERTO: não revela o vencedor enquanto o pregão está em andamento
-            }
-        }
-
-        return meusLances; // retorna a lista com o campo "vencedor" preenchido para cada lance
+        // O campo "vencedor" já é lido diretamente da coluna no banco pelo repositório
+        return lanceRepository.getMeusLances(userLogado.getId());
     }
 }

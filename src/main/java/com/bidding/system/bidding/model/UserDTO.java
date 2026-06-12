@@ -1,24 +1,24 @@
 package com.bidding.system.bidding.model;
 
-// DTO completo de usuário: usado no cadastro (POST /registrar) e como payload extraído do JWT pelo TokenService
 public class UserDTO {
 
-    private Long id;       // identificador único gerado pelo banco (auto_increment)
-    private String nome;   // nome de exibição do usuário
-    private String email;  // e-mail usado no login; deve ser único na tabela usuarios
-    private String senha;  // senha em texto puro (sem hash nesta versão)
-    private String role;   // perfil do usuário: "FORNECEDOR" (envia lances) ou "COMPRADOR" (cria editais)
+    private Long id;
+    private String nome;
+    private String email;
+    private String senha;
+    private String confirmarSenha;
+    private String role;
 
-    // Construtor padrão exigido pelo Jackson para desserializar o JSON do corpo da requisição
     public UserDTO() {
     }
 
-    // Construtor completo utilizado ao montar o objeto após leitura do banco de dados
-    public UserDTO(Long id, String nome, String email, String senha, String role) {
+
+    public UserDTO(Long id, String nome, String email, String senha, String confirmarSenha, String role) {
         this.id = id;
         this.nome = nome;
         this.email = email;
         this.senha = senha;
+        this.confirmarSenha = confirmarSenha;
         this.role = role;
     }
 
@@ -54,6 +54,14 @@ public class UserDTO {
         this.senha = senha;
     }
 
+    public String getConfirmarSenha() {
+        return confirmarSenha;
+    }
+
+    public void setConfirmarSenha(String confirmarSenha) {
+        this.confirmarSenha = confirmarSenha;
+    }
+
     public String getRole() {
         return role;
     }
@@ -61,5 +69,4 @@ public class UserDTO {
     public void setRole(String role) {
         this.role = role;
     }
-
 }
