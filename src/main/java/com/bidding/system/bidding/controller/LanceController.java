@@ -19,6 +19,7 @@ public class LanceController {
 
     @GetMapping("/meus-lances")
     public List<MeuLanceDTO> getMeusLances(@RequestHeader("Authorization") String authHeader) {
+        // Remove o prefixo "Bearer " para obter o token JWT puro antes de passá-lo ao LanceService
         String token = authHeader.replace("Bearer ", "");
         return lanceService.getMeusLances(token);
     }

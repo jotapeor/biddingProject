@@ -1,12 +1,12 @@
 package com.bidding.system.bidding.repository;
 
 import com.bidding.system.bidding.model.LanceDTO;
+import com.bidding.system.bidding.model.MeuLanceDTO;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Repository
 public class LanceRepository {
@@ -14,27 +14,57 @@ public class LanceRepository {
     public int novoLance(LanceDTO lance) {
         try {
             Connection conn = Conexao.conectar();
-            PreparedStatement stmt = conn.prepareStatement("insert into lances (valor, data_lance, id_edital, id_usuario) values (?, ?, ?, ?)");
+            PreparedStatement stmt = conn.prepareStatement(
+                    "insert into lances (valor, data_lance, id_edital, id_usuario, vencedor) values (?, ?, ?, ?, FALSE)"
+            );
             stmt.setDouble(1, lance.getValor());
             stmt.setTimestamp(2, Timestamp.valueOf(lance.getData_lance()));
             stmt.setLong(3, lance.getId_edital());
             stmt.setLong(4, lance.getId_usuario());
-
             return stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return 0;
     }
 
-    public java.util.List<LanceDTO> getLancesByEdital(Long idEdital) {
-        java.util.List<LanceDTO> lances = new java.util.ArrayList<>();
+    public void resetarVencedores(Long idEdital) {
         try {
             Connection conn = Conexao.conectar();
-            PreparedStatement stmt = conn.prepareStatement("select * from lances where id_edital = ? order by data_lance desc");
+            PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE lances SET vencedor = FALSE WHERE id_edital = ?"
+            );
             stmt.setLong(1, idEdital);
-            java.sql.ResultSet rs = stmt.executeQuery();
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void marcarVencedor(Long idLanceVencedor) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE lances SET vencedor = TRUE WHERE id = ?"
+            );
+            stmt.setLong(1, idLanceVencedor);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<LanceDTO> getLancesByEdital(Long idEdital) {
+        List<LanceDTO> lances = new ArrayList<>();
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "select l.*, u.nome as nome_fornecedor from lances l " +
+                            "join usuarios u on l.id_usuario = u.id " +
+                            "where l.id_edital = ? order by l.data_lance desc"
+            );
+            stmt.setLong(1, idEdital);
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 LanceDTO lance = new LanceDTO();
                 lance.setId(rs.getLong("id"));
@@ -42,6 +72,8 @@ public class LanceRepository {
                 lance.setData_lance(rs.getTimestamp("data_lance").toLocalDateTime());
                 lance.setId_edital(rs.getLong("id_edital"));
                 lance.setId_usuario(rs.getLong("id_usuario"));
+                lance.setNome_fornecedor(rs.getString("nome_fornecedor"));
+                lance.setVencedor(rs.getBoolean("vencedor")); // Lê o campo vencedor persistido no banco
                 lances.add(lance);
             }
         } catch (SQLException e) {
@@ -50,14 +82,18 @@ public class LanceRepository {
         return lances;
     }
 
-    public java.util.List<LanceDTO> getLancesByEditalAndUsuario(Long idEdital, Long idUsuario) {
-        java.util.List<LanceDTO> lances = new java.util.ArrayList<>();
+    public List<LanceDTO> getLancesByEditalAndUsuario(Long idEdital, Long idUsuario) {
+        List<LanceDTO> lances = new ArrayList<>();
         try {
             Connection conn = Conexao.conectar();
-            PreparedStatement stmt = conn.prepareStatement("select * from lances where id_edital = ? and id_usuario = ? order by data_lance desc");
+            PreparedStatement stmt = conn.prepareStatement(
+                    "select l.*, u.nome as nome_fornecedor from lances l " +
+                            "join usuarios u on l.id_usuario = u.id " +
+                            "where l.id_edital = ? and l.id_usuario = ? order by l.data_lance desc"
+            );
             stmt.setLong(1, idEdital);
             stmt.setLong(2, idUsuario);
-            java.sql.ResultSet rs = stmt.executeQuery();
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 LanceDTO lance = new LanceDTO();
                 lance.setId(rs.getLong("id"));
@@ -65,6 +101,8 @@ public class LanceRepository {
                 lance.setData_lance(rs.getTimestamp("data_lance").toLocalDateTime());
                 lance.setId_edital(rs.getLong("id_edital"));
                 lance.setId_usuario(rs.getLong("id_usuario"));
+                lance.setNome_fornecedor(rs.getString("nome_fornecedor"));
+                lance.setVencedor(rs.getBoolean("vencedor"));
                 lances.add(lance);
             }
         } catch (SQLException e) {
@@ -73,26 +111,29 @@ public class LanceRepository {
         return lances;
     }
 
-    public java.util.List<com.bidding.system.bidding.model.MeuLanceDTO> getMeusLances(Long idUsuario) {
-        java.util.List<com.bidding.system.bidding.model.MeuLanceDTO> lista = new java.util.ArrayList<>();
+    public List<MeuLanceDTO> getMeusLances(Long idUsuario) {
+        List<MeuLanceDTO> lista = new ArrayList<>();
         try {
             Connection conn = Conexao.conectar();
-            String sql = "SELECT l.id as id_lance, l.valor, l.data_lance, e.id as id_edital, e.titulo, e.status " +
-                         "FROM lances l " +
-                         "JOIN editais e ON l.id_edital = e.id " +
-                         "WHERE l.id_usuario = ? " +
-                         "ORDER BY l.data_lance DESC";
+            String sql =
+                    "select l.id as id_lance, l.valor, l.data_lance, l.vencedor, " +
+                            "e.id as id_edital, e.titulo, e.status " +
+                            "from lances l " +
+                            "join editais e on l.id_edital = e.id " +
+                            "where l.id_usuario = ? " +
+                            "order by l.data_lance desc";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, idUsuario);
-            java.sql.ResultSet rs = stmt.executeQuery();
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                com.bidding.system.bidding.model.MeuLanceDTO dto = new com.bidding.system.bidding.model.MeuLanceDTO();
+                MeuLanceDTO dto = new MeuLanceDTO();
                 dto.setIdLance(rs.getLong("id_lance"));
                 dto.setValor(rs.getDouble("valor"));
                 dto.setDataLance(rs.getTimestamp("data_lance").toLocalDateTime());
                 dto.setIdEdital(rs.getLong("id_edital"));
                 dto.setTituloEdital(rs.getString("titulo"));
                 dto.setStatusEdital(rs.getString("status"));
+                dto.setVencedor(rs.getBoolean("vencedor")); // Campo persistido: lido diretamente do banco
                 lista.add(dto);
             }
         } catch (SQLException e) {
@@ -101,22 +142,55 @@ public class LanceRepository {
         return lista;
     }
 
-    public Double getMenorLanceByEdital(Long idEdital) {
-        Double menorValor = null;
+    public Long getIdLanceVencedor(Long idEdital) {
         try {
             Connection conn = Conexao.conectar();
-            PreparedStatement stmt = conn.prepareStatement("SELECT MIN(valor) as menor_valor FROM lances WHERE id_edital = ?");
+            PreparedStatement stmt = conn.prepareStatement(
+                    "select id from lances where id_edital = ? order by valor desc, id asc limit 1"
+            );
             stmt.setLong(1, idEdital);
-            java.sql.ResultSet rs = stmt.executeQuery();
+            ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                double val = rs.getDouble("menor_valor");
-                if (!rs.wasNull()) {
-                    menorValor = val;
-                }
+                return rs.getLong("id");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return menorValor;
+        return null; // Retorna null se não houver lances para o edital
+    }
+
+    public Long getIdFornecedorDoLance(Long idLance) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "select id_usuario from lances where id = ?"
+            );
+            stmt.setLong(1, idLance);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getLong("id_usuario");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public int contarLancesPorFornecedor(Long idEdital, Long idUsuario) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "select count(*) as total from lances where id_edital = ? and id_usuario = ?"
+            );
+            stmt.setLong(1, idEdital);
+            stmt.setLong(2, idUsuario);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("total");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 }

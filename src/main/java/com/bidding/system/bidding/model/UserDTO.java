@@ -6,16 +6,19 @@ public class UserDTO {
     private String nome;
     private String email;
     private String senha;
+    private String confirmarSenha;
     private String role;
 
     public UserDTO() {
     }
 
-    public UserDTO(Long id, String nome, String email, String senha, String role) {
+
+    public UserDTO(Long id, String nome, String email, String senha, String confirmarSenha, String role) {
         this.id = id;
         this.nome = nome;
         this.email = email;
         this.senha = senha;
+        this.confirmarSenha = confirmarSenha;
         this.role = role;
     }
 
@@ -51,6 +54,14 @@ public class UserDTO {
         this.senha = senha;
     }
 
+    public String getConfirmarSenha() {
+        return confirmarSenha;
+    }
+
+    public void setConfirmarSenha(String confirmarSenha) {
+        this.confirmarSenha = confirmarSenha;
+    }
+
     public String getRole() {
         return role;
     }
@@ -58,5 +69,4 @@ public class UserDTO {
     public void setRole(String role) {
         this.role = role;
     }
-
 }

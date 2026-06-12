@@ -8,6 +8,7 @@ public class UserRequestDTO {
     public UserRequestDTO() {
     }
 
+
     public UserRequestDTO(String email, String senha) {
         this.email = email;
         this.senha = senha;
@@ -28,5 +29,4 @@ public class UserRequestDTO {
     public void setSenha(String senha) {
         this.senha = senha;
     }
-
 }
