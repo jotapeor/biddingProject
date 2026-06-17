@@ -15,7 +15,7 @@ public class LanceRepository {
         try {
             Connection conn = Conexao.conectar();
             PreparedStatement stmt = conn.prepareStatement(
-                    "insert into lances (valor, data_lance, id_edital, id_usuario, vencedor) values (?, ?, ?, ?, FALSE)"
+                    "insert into lances (valor, data_lance, id_edital, id_usuario, vencedor) values (?, ?, ?, ?, false)"
             );
             stmt.setDouble(1, lance.getValor());
             stmt.setTimestamp(2, Timestamp.valueOf(lance.getData_lance()));
@@ -32,7 +32,7 @@ public class LanceRepository {
         try {
             Connection conn = Conexao.conectar();
             PreparedStatement stmt = conn.prepareStatement(
-                    "UPDATE lances SET vencedor = FALSE WHERE id_edital = ?"
+                    "update lances set vencedor = false where id_edital = ?"
             );
             stmt.setLong(1, idEdital);
             stmt.executeUpdate();
@@ -45,7 +45,7 @@ public class LanceRepository {
         try {
             Connection conn = Conexao.conectar();
             PreparedStatement stmt = conn.prepareStatement(
-                    "UPDATE lances SET vencedor = TRUE WHERE id = ?"
+                    "update lances set vencedor = true where id = ?"
             );
             stmt.setLong(1, idLanceVencedor);
             stmt.executeUpdate();
@@ -188,6 +188,56 @@ public class LanceRepository {
             if (rs.next()) {
                 return rs.getInt("total");
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int deletarLance(Long idLance) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "delete from lances where id = ?"
+            );
+            stmt.setLong(1, idLance);
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public LanceDTO getLanceById(Long id) {
+        LanceDTO lance = null;
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement("select * from lances where id = ?");
+            stmt.setLong(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                lance = new LanceDTO();
+                lance.setId(rs.getLong("id"));
+                lance.setValor(rs.getDouble("valor"));
+                lance.setData_lance(rs.getTimestamp("data_lance").toLocalDateTime());
+                lance.setId_edital(rs.getLong("id_edital"));
+                lance.setId_usuario(rs.getLong("id_usuario"));
+                lance.setVencedor(rs.getBoolean("vencedor"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return lance;
+    }
+
+    public int deletarLancesByEdital(Long idEdital) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "delete from lances where id_edital = ?"
+            );
+            stmt.setLong(1, idEdital);
+            return stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }

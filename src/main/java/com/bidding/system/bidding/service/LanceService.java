@@ -102,4 +102,26 @@ public class LanceService {
         // O campo "vencedor" já é lido diretamente da coluna no banco pelo repositório
         return lanceRepository.getMeusLances(userLogado.getId());
     }
+
+    public void deletarLance(Long idLance, String token) {
+        if (!tokenService.validarToken(token)) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
+        }
+        UserDTO userLogado = tokenService.extrairClaim(token);
+        if (!"FORNECEDOR".equals(userLogado.getRole())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Apenas fornecedores podem deletar lances.");
+        }
+        LanceDTO lance = lanceRepository.getLanceById(idLance);
+        if (lance == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Lance não encontrado");
+        }
+        if (!lance.getId_usuario().equals(userLogado.getId())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Você só pode deletar seus próprios lances.");
+        }
+
+        int rows = lanceRepository.deletarLance(idLance);
+        if (rows == 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao deletar lance");
+        }
+    }
 }
