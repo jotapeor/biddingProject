@@ -29,12 +29,12 @@ CREATE TABLE `editais` (
   `titulo` varchar(150) NOT NULL,
   `descricao` text,
   `data_fechamento` datetime NOT NULL,
-  `status` enum('ABERTO','ENCERRADO') DEFAULT 'ABERTO',
+  `status` varchar(100) NOT NULL DEFAULT 'ABERTO',
   `vencedor` int DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `vencedor` (`vencedor`),
+  KEY `fk_editais_vencedor` (`vencedor`),
   CONSTRAINT `fk_editais_vencedor` FOREIGN KEY (`vencedor`) REFERENCES `usuarios` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -59,12 +59,13 @@ CREATE TABLE `lances` (
   `data_lance` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `id_edital` int NOT NULL,
   `id_usuario` int NOT NULL,
+  `vencedor` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `id_edital` (`id_edital`),
   KEY `id_usuario` (`id_usuario`),
   CONSTRAINT `lances_ibfk_1` FOREIGN KEY (`id_edital`) REFERENCES `editais` (`id`),
   CONSTRAINT `lances_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -91,7 +92,7 @@ CREATE TABLE `usuarios` (
   `role` enum('COMPRADOR','FORNECEDOR') NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -113,4 +114,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-03 15:35:52
+-- Dump completed on 2026-06-17 13:44:55
