@@ -68,4 +68,18 @@ public class EditalController {
         String token = authHeader.replace("Bearer ", "");
         return lanceService.listarLances(id, token);
     }
+
+    @PutMapping("/{id}")
+    public String atualizarEdital(@PathVariable Long id, @RequestBody EditalDTO edital, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        editalService.atualizarEdital(id, edital, token);
+        return "Edital atualizado com sucesso";
+    }
+
+    @DeleteMapping("/{id}")
+    public String deletarEdital(@PathVariable Long id, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        editalService.deletarEdital(id, token);
+        return "Edital deletado com sucesso";
+    }
 }

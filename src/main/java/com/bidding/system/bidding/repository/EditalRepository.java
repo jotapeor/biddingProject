@@ -169,4 +169,35 @@ public class EditalRepository {
             e.printStackTrace();
         }
     }
+
+    public int atualizarEdital(EditalDTO edital) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "update editais set titulo = ?, descricao = ?, data_fechamento = ? where id = ?"
+            );
+            stmt.setString(1, edital.getTitulo());
+            stmt.setString(2, edital.getDescricao());
+            stmt.setTimestamp(3, Timestamp.valueOf(edital.getData_fechamento()));
+            stmt.setLong(4, edital.getId());
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int deletarEdital(Long idEdital) {
+        try {
+            Connection conn = Conexao.conectar();
+            PreparedStatement stmt = conn.prepareStatement(
+                    "delete from editais where id = ?"
+            );
+            stmt.setLong(1, idEdital);
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }

@@ -125,4 +125,66 @@ public class EditalService {
             }
         }
     }
+
+    public void atualizarEdital(Long id, EditalDTO edital, String token) {
+        if (!tokenService.validarToken(token)) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
+        }
+        UserDTO usuarioLogado = tokenService.extrairClaim(token);
+        if (!usuarioLogado.getRole().equals("COMPRADOR")) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Acesso negado: apenas COMPRADOR pode atualizar edital");
+        }
+
+        EditalDTO existente = editalRepository.getById(id);
+        if (existente == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado");
+        }
+
+        int totalLances = editalRepository.contarLancesByEdital(id);
+        if (totalLances > 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "O edital não pode ser editado pois já possui lances em processo");
+        }
+
+        edital.setId(id);
+        // preserva o status e data de fechamento se não for passado ou mantiver? O enunciado diz: "podera ser editado o nome, data de fechamento e descricao."
+        if (edital.getTitulo() == null || edital.getTitulo().trim().isEmpty() ||
+                edital.getDescricao() == null || edital.getDescricao().trim().isEmpty() ||
+                edital.getData_fechamento() == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Preencha todos os campos obrigatórios");
+        }
+
+        int rows = editalRepository.atualizarEdital(edital);
+        if (rows == 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao atualizar edital");
+        }
+    }
+
+    public void deletarEdital(Long id, String token) {
+        if (!tokenService.validarToken(token)) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Token inválido!");
+        }
+        UserDTO usuarioLogado = tokenService.extrairClaim(token);
+        if (!usuarioLogado.getRole().equals("COMPRADOR")) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(403), "Acesso negado: apenas COMPRADOR pode deletar edital");
+        }
+
+        EditalDTO existente = editalRepository.getById(id);
+        if (existente == null) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(404), "Edital não encontrado");
+        }
+
+        int totalLances = editalRepository.contarLancesByEdital(id);
+        if (existente.getStatus() != null && existente.getStatus().startsWith("ABERTO") && totalLances > 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "Não é possível deletar um edital aberto que já possui lances");
+        }
+
+        if (totalLances > 0) {
+            lanceRepository.deletarLancesByEdital(id);
+        }
+
+        int rows = editalRepository.deletarEdital(id);
+        if (rows == 0) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(500), "Erro ao deletar edital");
+        }
+    }
 }

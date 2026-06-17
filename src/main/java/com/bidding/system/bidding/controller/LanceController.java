@@ -23,4 +23,11 @@ public class LanceController {
         String token = authHeader.replace("Bearer ", "");
         return lanceService.getMeusLances(token);
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public String deletarLance(@org.springframework.web.bind.annotation.PathVariable Long id, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        lanceService.deletarLance(id, token);
+        return "Lance deletado com sucesso";
+    }
 }
