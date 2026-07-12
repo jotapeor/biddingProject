@@ -1,89 +1,89 @@
-# 🏛️ EditaisGOV — Backend
+# EditaisGOV Backend
 
-> ⚙️ API REST do Sistema de Licitações Governamentais, desenvolvida com Java 21 e Spring Boot. Responsável pelo gerenciamento de usuários, editais e processamento de lances com autenticação via JWT.
+REST API for EditaisGOV, a government procurement (bidding) platform. Handles authentication, tender (edital) management, and bid (lance) processing. Companion service for the [EditaisGOV Frontend](https://github.com/jotapeor/biddingFrontEnd).
 
-Este repositório é o **núcleo do sistema**. Para a interface web que consome esta API, consulte o repositório do **[FrontEnd →](https://github.com/jotapeor/biddingFrontEnd.git)**.
+## Tech Stack
 
----
+- Java 21
+- Spring Boot 4.0.6 (Web MVC)
+- MySQL
+- JWT (jjwt) for stateless authentication
+- Maven
 
-## 🚀 Tecnologias Utilizadas
+## Architecture
 
-| Tecnologia | Descrição |
-|---|---|
-| Java 21 | Linguagem principal |
-| Spring Boot 4.0.6 | Framework base |
-| MySQL | Banco de dados relacional |
-| JWT (jjwt) | Autenticação e autorização |
-| Thymeleaf | Renderização de views |
-| Maven | Gerenciador de dependências |
+Layered structure: `controller` -> `service` -> `repository` -> `model`. Authentication is stateless via JWT; user identity and role are extracted directly from the token payload (`TokenService.extrairClaim`), avoiding a database lookup on every request.
 
----
+Roles: `FORNECEDOR` (supplier, places bids) and a buyer/admin role that creates and manages tenders.
 
-## ✨ Funcionalidades
+## API Reference
 
-- **Gerenciamento de Usuários:** Cadastro, autenticação e controle de perfis.
-- **Gestão de Editais:** Criação e listagem de editais/leilões disponíveis.
-- **Gerenciamento de Lances (Bids):** Submissão e histórico de lances (`MeuLanceDTO`).
-- **Autenticação Segura:** Proteção de endpoints via tokens JWT.
+### Authentication — `/api/autenticar`
 
----
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/registrar` | Registers a new user |
+| POST | `/logar` | Authenticates a user and returns a JWT |
+| GET | `/verificar-email` | Checks if an email is already registered |
+| GET | `/verificar-nome` | Checks if a username is already taken |
 
-## 🛠️ Pré-requisitos
+### Tenders — `/api/editais`
 
-- [JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-- [Maven](https://maven.apache.org/)
-- [MySQL Server](https://dev.mysql.com/downloads/mysql/)
+All routes require an `Authorization: Bearer <token>` header.
 
----
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/criar` | Creates a new tender |
+| GET | `/` | Lists tenders; `?urgente=true` filters tenders closing within 48 hours |
+| GET | `/{id}` | Retrieves a single tender |
+| PUT | `/{id}` | Updates a tender |
+| DELETE | `/{id}` | Deletes a tender |
+| POST | `/{id}/lances` | Submits a bid on a tender |
+| GET | `/{id}/lances` | Lists bids on a tender |
 
-## ⚙️ Como Executar Localmente
+### Bids — `/api/lances`
 
-1. **Clone o repositório:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/meus-lances` | Lists bids placed by the authenticated user |
+| DELETE | `/{id}` | Deletes a bid |
+
+## Data Model
+
+**UserDTO** — id, nome, email, senha (hashed), role.
+
+**EditalDTO** — id, titulo, descricao, data_fechamento, status, vencedor.
+
+**LanceDTO** — id, valor, data_lance (server-assigned), id_edital, id_usuario, nome_fornecedor, vencedor.
+
+## Requirements
+
+- JDK 21+
+- Maven 3.9+
+- MySQL 8
+
+## Setup
+
+1. Create the database and import the schema:
    ```bash
-   git clone https://github.com/jotapeor/biddingBackEnd.git
-   cd biddingBackEnd
+   mysql -u root -p < dump.sql
+   ```
+2. Set the required environment variables (see below).
+3. Run the application:
+   ```bash
+   ./mvnw spring-boot:run
    ```
 
-2. **Configure o banco de dados:**
-   - Crie um banco no MySQL e importe o dump inicial:
-     ```bash
-     mysql -u seu_usuario -p nome_do_banco < dumpDB.sql
-     ```
-   - Atualize as credenciais em `src/main/resources/application.properties`.
+The API starts on `http://localhost:8080`.
 
-3. **Inicie a aplicação:**
-   ```bash
-   # Com Maven Wrapper (Windows)
-   mvnw spring-boot:run
+## Environment Variables
 
-   # Com Maven padrão
-   mvn spring-boot:run
-   ```
+| Variable | Description | Required |
+|----------|--------------|----------|
+| `JWT_SECRET` | Secret key used to sign JWTs | Yes |
 
-A API estará disponível em `http://localhost:8080`.
+> Database connection details are currently hardcoded in `repository/Conexao.java` (URL, username, and password), separate from the JPA/env-based configuration used elsewhere. This must be externalized before the credentials are committed to version control again — see the security note in the related repository.
 
-> ⚠️ O **[Frontend](https://github.com/jotapeor/bidding-frontend)** precisa que esta API esteja em execução para funcionar corretamente.
+## Related Project
 
----
-
-## 📂 Estrutura de Pacotes
-
-```text
-src/main/java/com/bidding/system/bidding/
-├── controller/    # Endpoints da API REST (UserController, EditalController, LanceController)
-├── model/         # Entidades e DTOs (ex: MeuLanceDTO)
-├── repository/    # Acesso ao banco de dados via Spring Data JPA
-└── service/       # Regras de negócio
-```
-
----
-
-## 🤝 Contribuindo
-
-Sinta-se à vontade para abrir uma *issue* antes de enviar um *pull request*, especialmente para mudanças maiores.
-
----
-
-## 📝 Licença
-
-Este projeto tem fins educacionais como parte de um curso de Desenvolvimento Web com Java.
+[biddingFrontEnd](https://github.com/jotapeor/biddingFrontEnd) — Thymeleaf client consuming this API.
