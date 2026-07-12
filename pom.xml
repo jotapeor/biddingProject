@@ -11,7 +11,7 @@
     <groupId>com.bidding.system</groupId>
     <artifactId>bidding</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>bidding</name>
+    <name>biddingBackEnd</name>
     <description/>
     <url/>
     <licenses>
